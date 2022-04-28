@@ -1,0 +1,1 @@
+option('run_all_tests', type: 'boolean', value: false)
