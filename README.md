@@ -20,6 +20,8 @@ char *word = WordStatGetMostFrequent(ws, &num_occur);
 assert(word);
 assert(strcmp(word, "my") == 0);
 
+assert(WordStatGetTotal(ws) == 6);
+
 free(word);
 WordStatFree(ws);
 ```
