@@ -16,3 +16,6 @@ WordStatAddText(WordStat *ws,
 char *
 WordStatGetMostFrequent(WordStat *ws,
                         size_t *num);
+
+size_t
+WordStatGetTotal(WordStat *ws);

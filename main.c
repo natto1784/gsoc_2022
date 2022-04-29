@@ -14,7 +14,8 @@ add_and_check(WordStat *ws,
               size_t counter,
               const char *text,
               const char *word,
-              size_t *number)
+              size_t *number,
+              size_t *total)
 {
     bool ret = true;
     size_t actual_number = SIZE_MAX;
@@ -35,12 +36,23 @@ add_and_check(WordStat *ws,
     }
 
     if (number && *number != actual_number) {
-        if (ret) {
+        if (ret)
             printf("FAIL\n");
-            printf("Expected '%zu', but got '%zu'\n", *number, actual_number);
+        printf("Expected '%zu', but got '%zu'\n", *number, actual_number);
+        ret = false;
+    }
+
+    if (total) {
+        size_t actual_total = WordStatGetTotal(ws);
+
+        if (*total != actual_total) {
+            if (ret)
+                printf("FAIL\n");
+            printf("Expected total '%zu', but got '%zu'\n", *total, actual_total);
             ret = false;
         }
     }
+
 
     if (ret)
         printf("OK\n");
@@ -50,16 +62,24 @@ add_and_check(WordStat *ws,
 
 #ifdef RUN_ALL_TESTS
 
+# define DO_TEST_FULL(text, word, number, total) \
+    do { \
+        size_t tmp_num = number; \
+        size_t tmp_tot = total; \
+        if (!add_and_check(ws, __COUNTER__, text, word, &tmp_num, &tmp_tot)) \
+            fail = true; \
+    } while (0)
+
 # define DO_TEST(text, word, number) \
     do { \
         size_t tmp = number; \
-        if (!add_and_check(ws, __COUNTER__, text, word, &tmp)) \
+        if (!add_and_check(ws, __COUNTER__, text, word, &tmp, NULL)) \
             fail = true; \
     } while (0)
 
 # define DO_TEST_SIMPLE(text, word) \
     do { \
-        if (!add_and_check(ws, __COUNTER__, text, word, NULL)) \
+        if (!add_and_check(ws, __COUNTER__, text, word, NULL, NULL)) \
             fail = true; \
     } while (0)
 
@@ -67,14 +87,23 @@ add_and_check(WordStat *ws,
 
 #else
 
+# define DO_TEST_FULL(text, word, number, total) \
+    do { \
+        size_t tmp_num = number; \
+        size_t tmp_tot = total; \
+        fail = fail || !add_and_check(ws, __COUNTER__, \
+                                      text, word, &tmp_num, &tmp_tot); \
+    } while (0)
+
 # define DO_TEST(text, word, number) \
     do { \
         size_t tmp = number; \
-        fail = fail || !add_and_check(ws, __COUNTER__, text, word, &tmp); \
+        fail = fail || !add_and_check(ws, __COUNTER__, \
+                                      text, word, &tmp, NULL); \
     } while (0)
 
 # define DO_TEST_SIMPLE(text, word) \
-    fail = fail || !add_and_check(ws, __COUNTER__, text, word, NULL)
+    fail = fail || !add_and_check(ws, __COUNTER__, text, word, NULL, NULL)
 
 # define RUN_COND if (!fail)
 
@@ -120,16 +149,16 @@ main(int argc G_GNUC_UNUSED,
     }
 
     DO_TEST_SIMPLE(NULL, NULL);
-    DO_TEST(NULL, NULL, 0);
+    DO_TEST_FULL(NULL, NULL, 0, 0);
     DO_TEST("", NULL, 0);
-    DO_TEST(" ", NULL, 0);
+    DO_TEST_FULL(" ", NULL, 0, 0);
 
     DO_TEST_SIMPLE("asdf", "asdf");
     DO_TEST(NULL, "asdf", 1);
 
     DO_TEST_SIMPLE("Cupcake ipsum dolor sit amet gummi bears. More bears.", "bears");
-    DO_TEST(NULL, "bears", 2);
-    DO_TEST("Bears", "bears", 3);
+    DO_TEST_FULL(NULL, "bears", 2, 10);
+    DO_TEST_FULL("Bears", "bears", 3, 11);
     DO_TEST(dyn, "text", 4);
 
     g_clear_pointer(&dyn, g_free);
@@ -196,10 +225,12 @@ main(int argc G_GNUC_UNUSED,
             "A STILL more GLORIOUS DAWN awaits NETWORK OF wormholes MADE in "
             "THE interiors OF COLLAPSING stars THE ASH of STELLAR ALCHEMY? "
             "vastness IS bearable ONLY Through Love DISPASSIONATE "
-            "Extraterrestrial OBSERVER Vanquish THE Impossible Bits OF Moving "
+            "Extraterrestrial OBSERVER Va0nquish THE Impossible Bits OF Moving "
             "FLUFF VENTURE Intelligent BEINGS And BILLIons Upon Billions UPON "
             "BiLlIoNs Upon BILLIONS Upon BILLIONS upon biLlIONS upon biLLIons.",
             "billions", 7);
+
+    DO_TEST_FULL(NULL, "billions", 7, 162);
 
  cleanup:
     if (fail) {

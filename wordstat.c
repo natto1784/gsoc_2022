@@ -48,3 +48,12 @@ WordStatGetMostFrequent(WordStat *ws G_GNUC_UNUSED,
 {
     return NULL;
 }
+
+/*
+ * Returns the total amount of words added.
+ */
+size_t
+WordStatGetTotal(WordStat *ws G_GNUC_UNUSED)
+{
+    return 0;
+}
