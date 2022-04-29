@@ -4,7 +4,6 @@
 #include <glib.h>
 
 typedef struct _WordStat WordStat;
-typedef struct _WordStatInfo WordStatInfo;
 
 WordStat *WordStatNew(const char *delim, bool regex);
 void WordStatFree(WordStat *ws);
