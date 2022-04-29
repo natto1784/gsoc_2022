@@ -1,5 +1,4 @@
 #include "wordstat.h"
-#include <stdio.h>
 
 /*
  * This should hold everything that is needed to keep the working state.  Feel
@@ -55,13 +54,12 @@ void
 WordStatAddText(WordStat *ws,
                 const char *text)
 {
-   char *lower_text = g_ascii_strdown (text, -1);
+   char *lower_text = g_ascii_strdown(text, -1);
 
    if (ws->regex)
         ws->words = g_regex_split_simple(ws->delim, lower_text, 0, 0);
-   else {
+   else
         ws->words = g_strsplit_set(lower_text, ws->delim, 0);
-    }
 
     g_free(lower_text);
 
@@ -79,32 +77,36 @@ WordStatGetMostFrequent(WordStat *ws,
 {
     char *word = NULL;
     int mx = 0;
+    char **words = NULL;
 
-    if(!ws || !(ws->words)) goto done;
+    if(!ws || !(ws->words))
+        goto done;
     
-    char **words = g_strdupv(ws->words);
-    char **bkp = words;
-
-    while (*bkp != NULL) {
-      if ((*bkp)[0]) {
-        int c = 1;
-          
-        for (char **cur = bkp + 1; *cur; cur++) {
-          if (!g_strcmp0(*bkp, *cur))
-            c++, *cur = "";
+    words = g_strdupv(ws->words);
+    char **wordsptr = words;
+    
+    while (*wordsptr != NULL) {
+        if ((*wordsptr)[0]) {
+            int c = 1;
+            
+            for (char **cur = wordsptr + 1; *cur; cur++) {
+                if (!g_strcmp0(*wordsptr, *cur))
+                    c++, **cur = 0;
+            }
+            
+            if (mx < c) {
+                mx = c;
+                g_free(word);
+                word = g_strdup(*wordsptr);
+            }
         }
-        
-        if(mx < c)
-            mx = c, word = strdup(*bkp);
-      }
-          
-      bkp++;
+        wordsptr++;
     }
 
-    //    g_strfreev(words);
-
+    g_strfreev(words);
+    
  done:
-    if(num)
+    if (num)
         *num = mx;
     
     return word;
