@@ -7,9 +7,11 @@
  */
 struct _WordStat {
     GSList *words;
-    char   *delim;
-    bool    regex;
+    char *delim;
+    bool regex;
+    size_t total;
 };
+
 /*
  * Returns new structure that will be used when calling any APIs in this file.
  */
@@ -25,6 +27,7 @@ WordStatNew(const char *delim,
     ws->words = NULL;
     ws->delim = g_strdup(delim);
     ws->regex = regex;
+    ws->total = 0;
     
     return ws;
 }
@@ -49,7 +52,7 @@ void WordStatFree(WordStat *ws)
     g_free(ws);
 
     return;
-    }
+}
 
 /*
  * Splits the @text into words and updates @ws accordingly.
@@ -63,12 +66,12 @@ WordStatAddText(WordStat *ws,
     if (ws->regex)
         result = g_regex_split_simple(ws->delim, text, 0, 0);
     else
-        result = g_strdupv(g_strsplit_set(text, ws->delim, 0));
+        result = g_strsplit_set(text, ws->delim, 0);
 
-    int i = 0;
+    size_t i = 0;
     while (result[i] != NULL) {
         if(result[i][0])
-            ws->words = g_slist_prepend(ws->words, g_strdup(result[i]));
+            ws->words = g_slist_prepend(ws->words, g_strdup(result[i])), ws->total++;
         i++;
     }
 
@@ -76,6 +79,7 @@ WordStatAddText(WordStat *ws,
 
     return;
 }
+
 /*
  * Finds the most frequent word and returns it as a string.  Caller owns the
  * string and is responsible for freeing it.  If @num is supplied, the variable
@@ -88,7 +92,7 @@ WordStatGetMostFrequent(WordStat *ws,
 {
     char *word = NULL;
     size_t mx = 0;
-    GSList *words = ws->words;
+    g_autofree GSList *words = ws->words;
 
     if(!ws || !(ws->words))
         goto done;
@@ -127,5 +131,5 @@ WordStatGetMostFrequent(WordStat *ws,
 size_t
 WordStatGetTotal(WordStat *ws)
 {
-    return g_slist_length(ws->words);
+    return ws->total;
 }
