@@ -6,11 +6,10 @@
  * code compiles.
  */
 struct _WordStat {
-    char **words;
-    char *delim;
-    bool regex;
+    GSList *words;
+    char   *delim;
+    bool    regex;
 };
-
 /*
  * Returns new structure that will be used when calling any APIs in this file.
  */
@@ -39,13 +38,18 @@ void WordStatFree(WordStat *ws)
     if(!ws)
         return;
 
-    g_strfreev(ws->words);
+    while (ws->words) {
+        GSList *tmp = ws->words;
+        ws->words = ws->words->next;
+        g_free(tmp->data);
+        g_slist_free_1(tmp);
+    }
+    g_slist_free(ws->words);
     g_free(ws->delim);
-
     g_free(ws);
 
     return;
-}
+    }
 
 /*
  * Splits the @text into words and updates @ws accordingly.
@@ -54,17 +58,24 @@ void
 WordStatAddText(WordStat *ws,
                 const char *text)
 {
-   char *lower_text = g_ascii_strdown(text, -1);
+    char **result = NULL;
+    
+    if (ws->regex)
+        result = g_regex_split_simple(ws->delim, text, 0, 0);
+    else
+        result = g_strdupv(g_strsplit_set(text, ws->delim, 0));
 
-   if (ws->regex)
-        ws->words = g_regex_split_simple(ws->delim, lower_text, 0, 0);
-   else
-        ws->words = g_strsplit_set(lower_text, ws->delim, 0);
+    int i = 0;
+    while (result[i] != NULL) {
+        if(result[i][0])
+            ws->words = g_slist_prepend(ws->words, g_strdup(result[i]));
+        i++;
+    }
 
-    g_free(lower_text);
+    g_strfreev(result);
 
     return;
-  }
+}
 /*
  * Finds the most frequent word and returns it as a string.  Caller owns the
  * string and is responsible for freeing it.  If @num is supplied, the variable
@@ -76,34 +87,32 @@ WordStatGetMostFrequent(WordStat *ws,
                         size_t *num)
 {
     char *word = NULL;
-    int mx = 0;
-    char **words = NULL;
+    size_t mx = 0;
+    GSList *words = ws->words;
 
     if(!ws || !(ws->words))
         goto done;
     
-    words = g_strdupv(ws->words);
-    char **wordsptr = words;
     
-    while (*wordsptr != NULL) {
-        if ((*wordsptr)[0]) {
-            int c = 1;
-            
-            for (char **cur = wordsptr + 1; *cur; cur++) {
-                if (!g_strcmp0(*wordsptr, *cur))
-                    c++, **cur = 0;
-            }
-            
-            if (mx < c) {
-                mx = c;
-                g_free(word);
-                word = g_strdup(*wordsptr);
+    while (words) {
+        size_t c = 1;
+        char *cur = words->data;
+        
+        for (GSList *p = words->next; p; p = p->next) {
+            if (!g_ascii_strcasecmp(words->data, p->data)) {
+                c++;
             }
         }
-        wordsptr++;
+        
+        if (mx < c) {
+            mx = c;
+            g_free(word);
+            word = g_ascii_strdown(cur, -1);
+        }
+        
+        words = words->next;
+        words = g_slist_remove_all(words, cur);
     }
-
-    g_strfreev(words);
     
  done:
     if (num)
@@ -118,18 +127,5 @@ WordStatGetMostFrequent(WordStat *ws,
 size_t
 WordStatGetTotal(WordStat *ws)
 {
-    if(!ws || !(ws->words))
-        return 0;
-
-    char **tmp = ws->words;
-
-    int c = 0;
-    
-    while (*tmp) {
-        if ((*tmp)[0])
-            c++;
-        tmp++;
-    }
-    
-    return c;
+    return g_slist_length(ws->words);
 }
